@@ -112,6 +112,7 @@ Management domains:
 
 - Auth/settings: `src/app/api/auth/*`, `src/app/api/settings/*`
 - Providers/connections: `src/app/api/providers*`
+- Provider webhook upsert (secret auth, CPA/bulk): `src/app/api/webhooks/providers` — see `docs/WEBHOOK_PROVIDERS.md`
 - Provider nodes: `src/app/api/provider-nodes*`
 - OAuth: `src/app/api/oauth/*`
 - Keys/aliases/combos/pricing: `src/app/api/keys*`, `src/app/api/models/alias`, `src/app/api/combos*`, `src/app/api/pricing`
