@@ -56,6 +56,22 @@ describe("canonicalizeUsage", () => {
     expect(out.cache_creation_input_tokens).toBe(0);
   });
 
+  it("reads nested prompt_tokens_details.cached_tokens (buildUsage OpenAI-forwarding shape)", () => {
+    // commandcode /alpha/generate → toOpenAIUsage produces this nested shape:
+    // { prompt_tokens, prompt_tokens_details: { cached_tokens } } with prompt
+    // already cache-inclusive. canonicalizeUsage must surface cached_tokens so
+    // it survives persistence to the usage DB / dashboard.
+    const out = canonicalizeUsage({
+      prompt_tokens: 10040,
+      completion_tokens: 8,
+      prompt_tokens_details: { cached_tokens: 7552 },
+    });
+    expect(out.prompt_tokens).toBe(10040); // inclusive, unchanged
+    expect(out.cached_tokens).toBe(7552);
+    expect(out.cache_creation_input_tokens).toBe(0);
+    expect(out.total_tokens).toBe(10048);
+  });
+
   it("is idempotent (running twice yields the same canonical shape)", () => {
     const once = canonicalizeUsage({
       prompt_tokens: 100,

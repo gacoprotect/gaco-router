@@ -189,8 +189,12 @@ export function canonicalizeUsage(usage) {
     cached = num(usage.cache_read_input_tokens);
     prompt = prompt + cached + cacheCreation;
   } else {
-    // OpenAI/Gemini path (or already-canonical input): prompt already includes cached_tokens.
-    cached = num(usage.cached_tokens);
+    // OpenAI/Gemini path (or already-canonical input): prompt already includes
+    // cached_tokens. read it top-level OR from buildUsage()'s nested
+    // prompt_tokens_details.cached_tokens shape, so cache survives persistence
+    // when the upstream reports it nested (e.g. commandcode /alpha/generate
+    // → toOpenAIUsage → prompt_tokens_details.cached_tokens).
+    cached = num(usage.cached_tokens ?? usage.prompt_tokens_details?.cached_tokens);
   }
 
   const result = {

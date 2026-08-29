@@ -1,6 +1,6 @@
 {
   "name": "9router",
-  "version": "0.5.55",
+  "version": "0.5.57",
   "description": "9Router CLI - Start and manage 9Router server",
   "bin": {
     "9router": "./cli.js"
@@ -44,5 +44,8 @@
   "devDependencies": {
     "esbuild": "^0.25.12",
     "nodemon": "^3.1.14"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
   }
 }

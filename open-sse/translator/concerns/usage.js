@@ -57,7 +57,25 @@ const USAGE_EXTRACTORS = {
   commandcode(raw) {
     const input = n(raw.inputTokens), output = n(raw.outputTokens);
     const total = typeof raw.totalTokens === "number" ? raw.totalTokens : input + output;
-    return { promptTokens: input, completionTokens: output, totalTokens: total };
+    // /alpha/generate reports inputTokens INCLUDING cache. Cache is surfaced as
+    // cachedInputTokens (top-level), inputTokenDetails.cacheReadTokens, or nested
+    // raw.prompt_cache_hit_tokens / raw.prompt_tokens_details.cached_tokens.
+    // Extract it so prompt_tokens_details.cached_tokens reaches downstream clients
+    // (Claude Code reads cache_read_input_tokens after OpenAI→Claude translation)
+    // and cost tracking can price cache reads instead of billing full input.
+    const cached = n(raw.cachedInputTokens)
+      || n(raw.inputTokenDetails?.cacheReadTokens)
+      || n(raw.cacheReadTokens)
+      || n(raw.cachedTokens)
+      || n(raw.raw?.prompt_cache_hit_tokens)
+      || n(raw.raw?.prompt_tokens_details?.cached_tokens);
+    const cacheCreation = n(raw.cacheCreationInputTokens)
+      || n(raw.inputTokenDetails?.cacheWriteTokens)
+      || n(raw.raw?.prompt_tokens_details?.cache_creation_tokens);
+    const out = { promptTokens: input, completionTokens: output, totalTokens: total };
+    if (cached > 0) out.cachedTokens = cached;
+    if (cacheCreation > 0) out.cacheCreationTokens = cacheCreation;
+    return out;
   },
 };
 

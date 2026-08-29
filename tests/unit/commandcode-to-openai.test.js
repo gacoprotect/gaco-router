@@ -113,6 +113,66 @@ describe("commandcode-to-openai — finish", () => {
     const last = chunks[chunks.length - 1];
     expect(last.usage).toEqual({ prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 });
   });
+
+  it("surfaces cachedInputTokens as prompt_tokens_details.cached_tokens (live /alpha/generate schema)", () => {
+    // Real finish-step/finish usage captured from api.commandcode.ai/alpha/generate (2026-08-28):
+    // inputTokens already INCLUDES the cache-read portion, which is reported separately
+    // as cachedInputTokens / inputTokenDetails.cacheReadTokens / raw.prompt_cache_hit_tokens.
+    const usage = {
+      inputTokens: 10040,
+      inputTokenDetails: { noCacheTokens: 2488, cacheReadTokens: 7552 },
+      outputTokens: 8,
+      outputTokenDetails: { textTokens: 0, reasoningTokens: 8 },
+      totalTokens: 10048,
+      raw: {
+        prompt_tokens: 10040,
+        completion_tokens: 8,
+        prompt_cache_hit_tokens: 7552,
+        prompt_cache_miss_tokens: 2488,
+        total_tokens: 10048,
+        prompt_tokens_details: { cached_tokens: 7552 },
+        completion_tokens_details: { reasoning_tokens: 8 },
+      },
+      reasoningTokens: 8,
+      cachedInputTokens: 7552,
+    };
+    const { chunks } = feed([
+      { type: "text-delta", text: "hi" },
+      { type: "finish-step", finishReason: "stop", usage },
+      { type: "finish", totalUsage: usage },
+    ]);
+    const last = chunks[chunks.length - 1];
+    // prompt_tokens stays inclusive (inputTokens already counts cache), cached is broken out.
+    expect(last.usage.prompt_tokens).toBe(10040);
+    expect(last.usage.completion_tokens).toBe(8);
+    expect(last.usage.total_tokens).toBe(10048);
+    expect(last.usage.prompt_tokens_details).toEqual({ cached_tokens: 7552 });
+  });
+
+  it("falls back to nested raw.prompt_tokens_details.cached_tokens when top-level fields absent", () => {
+    const usage = {
+      inputTokens: 500,
+      outputTokens: 20,
+      totalTokens: 520,
+      raw: { prompt_tokens: 500, prompt_tokens_details: { cached_tokens: 300 } },
+    };
+    const { chunks } = feed([
+      { type: "finish-step", finishReason: "stop", usage },
+      { type: "finish", totalUsage: usage },
+    ]);
+    const last = chunks[chunks.length - 1];
+    expect(last.usage.prompt_tokens).toBe(500);
+    expect(last.usage.prompt_tokens_details).toEqual({ cached_tokens: 300 });
+  });
+
+  it("keeps no prompt_tokens_details when there is no cache", () => {
+    const { chunks } = feed([
+      { type: "finish-step", finishReason: "stop", usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } },
+      { type: "finish", totalUsage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } },
+    ]);
+    const last = chunks[chunks.length - 1];
+    expect(last.usage).toEqual({ prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 });
+  });
 });
 
 describe("commandcode-to-openai — error event", () => {
