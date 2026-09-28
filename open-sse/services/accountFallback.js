@@ -64,6 +64,54 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
 }
 
 /**
+ * Check if an error represents an authentication or authorization failure
+ * (e.g. invalid key, expired/revoked token, unauthorized).
+ * These errors require re-authentication, so the account should be deactivated.
+ *
+ * @param {number|null} status - HTTP status code
+ * @param {string|object} [errorText] - Error message or object
+ * @returns {boolean}
+ */
+export function isAuthError(status, errorText) {
+  const lower = (typeof errorText === "string" ? errorText : JSON.stringify(errorText || "")).toLowerCase();
+
+  // Rate limits or quota issues are NOT auth errors (transient / backoff)
+  if (
+    lower.includes("rate limit") ||
+    lower.includes("too many requests") ||
+    lower.includes("quota exceeded") ||
+    lower.includes("capacity") ||
+    lower.includes("overloaded")
+  ) {
+    return false;
+  }
+
+  // 401 Unauthorized is always an auth error
+  if (status === 401) return true;
+
+  // 403 Forbidden without quota wording is an auth/permission error
+  if (status === 403) return true;
+
+  const authKeywords = [
+    "unauthorized",
+    "invalid api key",
+    "invalid_api_key",
+    "bad_api_key",
+    "token invalid",
+    "token expired",
+    "token revoked",
+    "token_expired",
+    "token_refresh_failed",
+    "authentication_error",
+    "upstream_auth_error",
+    "auth_missing",
+    "no credentials",
+  ];
+
+  return authKeywords.some((keyword) => lower.includes(keyword));
+}
+
+/**
  * Check if account is currently unavailable (cooldown not expired)
  */
 export function isAccountUnavailable(unavailableUntil) {
